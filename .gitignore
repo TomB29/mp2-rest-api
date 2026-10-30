@@ -1,0 +1,11 @@
+# OS files
+.DS_Store
+
+# Python caches & virtual envs
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data files
+mp2-part1.md

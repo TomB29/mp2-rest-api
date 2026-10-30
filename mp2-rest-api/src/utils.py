@@ -1,5 +1,5 @@
 #Utils for MP2
-
+import logging
 def setup_logging(verbose=False):
     """Configure logging for the pipeline."""
     logging.basicConfig(
