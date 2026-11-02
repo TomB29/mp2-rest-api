@@ -10,7 +10,7 @@ class DatasetStorage:
 
     def save(self, df, filename):
         "Saves Copy of Dataset into dataset"
-        self._counter =+ 1
+        self._counter += 1
         dataset_id = self._counter
         self._store[dataset_id] = {"filename" : filename, "data" : df.copy()}
         logger.debug(f"Stored dataset: id={dataset_id}, rows={len(df)}")
@@ -22,7 +22,7 @@ class DatasetStorage:
         if element is None:
             logger.debug(f"Dataset not found -- ID {dataset_id}")
             return None
-        logger.debug(f"Retrieved Dataset -- ID {dataset_id} == {element.shape[0]} rows")
+        logger.debug(f"Retrieved Dataset -- ID {dataset_id} == {element["data"].shape[0]} rows")
         return element["data"].copy()
 
     def get_metadata(self, dataset_id):
@@ -43,7 +43,7 @@ class DatasetStorage:
             logger.debug(f"Dataset not found -- ID {dataset_id}")
             return False
         logger.debug(f"Updating Dataset -- ID {dataset_id}")
-        element['data'] = df
+        element['data'] = df.copy()
         return True
 
     def clear(self):

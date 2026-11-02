@@ -36,10 +36,10 @@ class ProcessingSettings(BaseModel):
     missing: MissingSettings = Field(default_factory=MissingSettings)
     outliers: OutlierSettings = Field(default_factory=OutlierSettings)
 
-class ProcessConfig(BaseModel):
-    validation: ValidationSettings = Field(default_factory=ModelName)
-    processing: ProcessingSettings = Field(default_factory=ModelName)
 
+class ProcessConfig(BaseModel):
+    validation: ValidationSettings = Field(default_factory=ValidationSettings)
+    processing: ProcessingSettings = Field(default_factory=ProcessingSettings)
 
 
 class ProcessingReport(BaseModel):

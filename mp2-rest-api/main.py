@@ -4,7 +4,9 @@ import logging
 from pathlib import Path
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from src import DatasetInfo, DatasetStorage, HealthResponse, setup_logging
+from src import (DatasetInfo, DatasetStorage, HealthResponse, setup_logging, OutlierSettings, 
+ValidationSettings, MissingSettings, ProcessingSettings, ProcessConfig, ProcessingReport)
+from data_pipeline import create_cleaning_report, process_data, validate_dataframe
 
 setup_logging(verbose=True)
 logger = logging.getLogger(__name__)
@@ -54,4 +56,45 @@ def get_dataset(dataset_id: int, limit: int = Query(default=100, ge=1)):
     records = json.loads(df.head(limit).to_json(orient="records"))
 
     return {"ID" : dataset_id, "Data" : records, "Total Length" : df.shape[0]}
-    
+
+
+@app.post( "/datasets/{dataset_id}/process", response_model=ProcessingReport)
+def process_dataset(dataset_id: int, config: ProcessConfig):
+    """Validate and process a stored dataset using MP1 functions."""
+    # TODO: retrieve, validate, process, report, update, and return.
+
+    df = storage.get(dataset_id)
+    if df is None:
+        logger.warning(f"ID not found: {dataset_id}")
+        raise HTTPException(status_code=404, detail=f"ID {dataset_id} not found")
+    config_dict = config.model_dump()
+    required_columns = config_dict["validation"]["required_columns"]
+    numeric_columns = config_dict["validation"]["numeric_columns"]
+
+    exists = df.columns
+
+    for elt in numeric_columns:
+        if elt not in exists:
+            raise HTTPException(status_code=400, detail=f"required column {elt} not found")
+            logger.error(f"{elt} does not exist in dataframe")
+    logger.info(f"All Required Columns Exist\n{numeric_columns}")
+
+    try:
+        df_val = (validate_dataframe(df, required_columns, numeric_columns)).copy()
+        val_lines_removed = df.shape[0] - df_val.shape[0]
+        logger.info(f"{val_lines_removed} rows removed in validation [containg null values]")
+
+        df_proc = process_data(df_val, config_dict)
+        clr_report = create_cleaning_report(df_val, df_proc)
+        
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+
+    storage.update(dataset_id, df_proc)
+
+    return ProcessingReport(
+        id=dataset_id,
+        validation_rows_removed=val_lines_removed,
+        cleaning_report=clr_report
+    )
