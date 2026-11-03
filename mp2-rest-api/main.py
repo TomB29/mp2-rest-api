@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from src import (DatasetInfo, DatasetStorage, HealthResponse, setup_logging, OutlierSettings, 
-ValidationSettings, MissingSettings, ProcessingSettings, ProcessConfig, ProcessingReport)
+ValidationSettings, MissingSettings, ProcessingSettings, ProcessConfig, ProcessingReport, log_requests)
 from data_pipeline import create_cleaning_report, process_data, validate_dataframe
 
 setup_logging(verbose=True)
@@ -52,7 +52,6 @@ def get_dataset(dataset_id: int, limit: int = Query(default=100, ge=1)):
     if df is None:
         logger.warning(f"ID not found: {dataset_id}")
         raise HTTPException(status_code=404, detail=f"ID {dataset_id} not found")
-    #listdata = df.head(limit)
     records = json.loads(df.head(limit).to_json(orient="records"))
 
     return {"ID" : dataset_id, "Data" : records, "Total Length" : df.shape[0]}
@@ -61,7 +60,6 @@ def get_dataset(dataset_id: int, limit: int = Query(default=100, ge=1)):
 @app.post( "/datasets/{dataset_id}/process", response_model=ProcessingReport)
 def process_dataset(dataset_id: int, config: ProcessConfig):
     """Validate and process a stored dataset using MP1 functions."""
-    # TODO: retrieve, validate, process, report, update, and return.
 
     df = storage.get(dataset_id)
     if df is None:
@@ -86,12 +84,13 @@ def process_dataset(dataset_id: int, config: ProcessConfig):
 
         df_proc = process_data(df_val, config_dict)
         clr_report = create_cleaning_report(df_val, df_proc)
-        
+
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
 
 
     storage.update(dataset_id, df_proc)
+    logger.info(f"{dataset_id} updated using validation and cleaning configuration")
 
     return ProcessingReport(
         id=dataset_id,
